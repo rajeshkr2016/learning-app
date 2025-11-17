@@ -1,0 +1,43 @@
+# Keep node_modules out of Docker context for faster builds
+node_modules
+npm-debug.log
+.npm
+
+# Keep build artifacts out
+dist
+
+# Environment files (will be copied separately if needed)
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+DOCKER.md
+
+# Local development & templates
+scripts/
+task_template.csv
+data/
+
+# CI/CD workflows (not needed in image)
+.github/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
