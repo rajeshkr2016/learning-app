@@ -2,9 +2,8 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image:
+      docker.io/rajeshkr2025/learning-tracker:latest
     container_name: learning-tracker-app
     ports:
       - "5001:5001"
