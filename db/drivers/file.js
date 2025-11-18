@@ -41,5 +41,12 @@ module.exports = {
     tasks[index].status = status;
     await writeFile(tasks);
     return tasks[index];
+  },
+  updateTask: async (index, taskObj) => {
+    const tasks = await readFile();
+    if (index < 0 || index >= tasks.length) return null;
+    tasks[index] = { ...tasks[index], ...taskObj };
+    await writeFile(tasks);
+    return tasks[index];
   }
 };

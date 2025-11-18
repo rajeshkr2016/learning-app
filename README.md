@@ -93,82 +93,99 @@ npm run dev
 
 ```bash
 npm run build
-NODE_ENV=production npm start
-```
-
 ## Docker Deployment
 
-### Build and Run with Docker Compose (Recommended)
+### Build, Push, and Deploy (Recommended Workflow)
+
+Use the following workflow to rebuild the image locally, push it to Docker Hub, and deploy via `docker-compose` which will pull the image from Docker Hub.
 
 ```bash
-# Build and start the container
+# 1. Build the image locally
+npm run docker:build
+
+# 2. Push to Docker Hub (requires docker login)
+# Remove containers and volumes
+
+# 3. Deploy with docker-compose (pulls from Docker Hub)
+docker-compose down -v
+
+# View logs
+npm run docker:logs
+
+# Stop the app
+npm run docker:down
+```
+
+You can also use the convenience script which accepts a username and optional tag:
+
+```bash
+./scripts/build-and-push.sh your-docker-username latest
+```
+
+See [DOCKER-BUILD.md](./DOCKER-BUILD.md) for a full build and push guide.
+
+### Build and Run with Docker Compose (Quick Start)
+
+If the image is already pushed to Docker Hub, start the stack with:
+
+```bash
 docker-compose up -d
 
 # View logs
-docker-compose logs -f
-
-# Stop the container
-docker-compose down
 ```
 
-The application will be available at http://localhost:5000
+# Stop the container
+
+```
+
+The application will be available at http://localhost:5001
 
 ### Build and Run with Docker (Manual)
 
 ```bash
-# Build the Docker image
-docker build -t learning-tracker-app .
+# Build the Docker image (replace `your-username`)
+## Project Structure
 
-# Run the container
-docker run -d \
+# Push to Docker Hub
+
+```
+
+# Run the container locally
+learning-tracker-app/
   --name learning-tracker \
   -p 5001:5001 \
   -e NODE_ENV=production \
-  learning-tracker-app
+  docker.io/your-username/learning-tracker:latest
 
 # View logs
-docker logs -f learning-tracker
+├── src/                     # React source files
 
 # Stop and remove the container
-docker stop learning-tracker
-docker rm learning-tracker
+│   ├── components/
+│   │   └── LearningTracker.jsx    # Main tracker component
 ```
 
 ### Docker Commands Reference
 
 ```bash
-# Rebuild the image (after code changes)
-docker-compose up -d --build
+# Rebuild and start the container
+│   └── App.jsx
 
 # Check container status
-docker-compose ps
+│
 
 # Access container shell
-docker-compose exec app sh
+├── db/                      # Database abstraction layer
 
 # View real-time logs
-docker-compose logs -f app
+│   ├── index.js             # Driver selector
 
 # Restart the application
-docker-compose restart
+│   └── drivers/
 
 # Remove containers and volumes
-docker-compose down -v
-```
-
-## Project Structure
-
-```
-learning-tracker-app/
-├── src/                     # React source files
-│   ├── components/
-│   │   └── LearningTracker.jsx    # Main tracker component
-│   └── App.jsx
-│
-├── db/                      # Database abstraction layer
-│   ├── index.js             # Driver selector
-│   └── drivers/
 │       ├── file.js          # JSON file-based (default)
+```
 │       ├── sqlite.js        # SQLite relational (optional)
 │       └── mongodb.js       # MongoDB NoSQL (optional)
 │

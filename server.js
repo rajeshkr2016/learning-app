@@ -30,12 +30,12 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
-// Update task status by index
+// Update task by index (accepts full task object)
 app.put('/api/tasks/:index', async (req, res) => {
   const { index } = req.params;
-  const { status } = req.body;
+  const taskObj = req.body || {};
   try {
-    const updated = await db.updateStatus(Number(index), status);
+    const updated = await db.updateTask(Number(index), taskObj);
     if (updated) {
       res.json({ success: true, task: updated });
     } else {

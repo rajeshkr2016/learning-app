@@ -38,5 +38,13 @@ module.exports = {
     if (!res.value) return null;
     const { _id, idx, ...rest } = res.value;
     return rest;
+  },
+  updateTask: async (index, taskObj) => {
+    await connect();
+    const { idx, _id, ...safeObj } = taskObj;
+    const res = await collection.findOneAndUpdate({ idx: Number(index) }, { $set: safeObj }, { returnDocument: 'after' });
+    if (!res.value) return null;
+    const { _id: id, idx: i, ...rest } = res.value;
+    return rest;
   }
 };

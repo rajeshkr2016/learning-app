@@ -19,5 +19,8 @@ module.exports = {
   },
   updateStatus: async (index, status) => {
     return driver.updateStatus(index, status);
+  },
+  updateTask: async (index, taskObj) => {
+    return driver.updateTask(index, taskObj);
   }
 };

@@ -2,14 +2,23 @@ version: '3.8'
 
 services:
   app:
-    image:
-      docker.io/rajeshkr2025/learning-tracker:latest
+    # Use the pre-built image from Docker Hub
+    # Before using this, build and push the image:
+    #   docker build -t docker.io/rajeshkr2025/learning-tracker:latest .
+    #   docker push docker.io/rajeshkr2025/learning-tracker:latest
+    image: docker.io/rajeshkr2025/learning-tracker:latest
     container_name: learning-tracker-app
     ports:
       - "5001:5001"
+    volumes:
+      - app-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=5001
+      - DB_TYPE=file
+      # Optional: for MongoDB support, add:
+      # - MONGO_URL=mongodb://mongo:27017
+      # - MONGO_DB=learning_tracker
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
@@ -17,3 +26,34 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+    # depends_on:
+    #   - mongo
+    networks:
+      - learning-network
+
+  # Optional: MongoDB service for database support
+  # mongo:
+  #   image: mongo:6.0
+  #   container_name: learning-tracker-mongo
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo-data:/data/db
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=admin
+  #     - MONGO_INITDB_ROOT_PASSWORD=password
+  #   restart: unless-stopped
+  #   networks:
+  #     - learning-network
+  #   profiles:
+  #     - mongodb
+
+volumes:
+  app-data:
+    driver: local
+  # mongo-data:
+  #   driver: local
+
+networks:
+  learning-network:
+    driver: bridge
