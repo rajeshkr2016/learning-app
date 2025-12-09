@@ -42,8 +42,15 @@ fi
 
 echo ""
 echo "📤 Pushing image to Docker Hub..."
-docker push "$REGISTRY/$DOCKER_HUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
-docker push "$REGISTRY/$DOCKER_HUB_USERNAME/$IMAGE_NAME:latest"
+if ${IMAGE_TAG} == "latest" ; then
+  echo "⚠️ Warning: You are pushing with the 'latest' tag. Consider using a specific version tag for better version control."
+  docker push "$REGISTRY/$DOCKER_HUB_USERNAME/$IMAGE_NAME:latest"
+else
+  echo "Pushing tag: $IMAGE_TAG"
+  docker push "$REGISTRY/$DOCKER_HUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG"
+fi
+
+
 
 if [ $? -eq 0 ]; then
   echo "✅ Push successful!"

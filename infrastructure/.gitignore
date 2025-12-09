@@ -1,0 +1,52 @@
+# Terraform/Terragrunt
+.terraform/
+.terragrunt-cache/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Backend configuration
+backend.tf
+provider.tf
+
+# Dependency lock files
+.terraform.lock.hcl
+
+# Environment files
+*.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Backup files
+*.backup
+*.bak
+
+# Secrets
+secrets/
+*.pem
+*.key
+
+# Graph outputs
+*.dot
+*.png
+dependency-graph-*.dot

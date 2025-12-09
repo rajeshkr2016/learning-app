@@ -1,0 +1,156 @@
+name: Deploy to GCP Cloud Run using image from Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**'
+      - '.github/workflows/gcp-cloudrun-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+  DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/learning-tracker:latest
+  CLOUD_RUN_SERVICE: learning-tracker-app
+
+jobs:
+  deploy-to-cloudrun:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for GCP Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Pull Docker image from Docker Hub
+        run: |
+          docker pull ${{ env.DOCKER_IMAGE }}
+
+      - name: Tag image for GCP Artifact Registry
+        run: |
+          docker tag ${{ env.DOCKER_IMAGE }} \
+            us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:latest
+          docker tag ${{ env.DOCKER_IMAGE }} \
+            us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:${{ github.sha }}
+
+      - name: Push image to GCP Artifact Registry
+        run: |
+          docker push us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:latest
+          docker push us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          region: ${{ env.GCP_REGION }}
+          image: us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:latest
+          flags: |
+            --allow-unauthenticated
+            --memory=512Mi
+            --cpu=1
+            --timeout=300s
+            --max-instances=10
+            --min-instances=0
+            --set-env-vars=NODE_ENV=production,DB_TYPE=file,PORT=8080
+            --port=8080
+
+      - name: Display deployment info
+        run: |
+          echo "✅ Service deployed successfully!"
+          echo "Service Name: ${{ env.CLOUD_RUN_SERVICE }}"
+          echo "Region: ${{ env.GCP_REGION }}"
+          echo "Service URL: ${{ steps.deploy.outputs.url }}"
+          echo ""
+          echo "Environment:"
+          echo "  - NODE_ENV=production"
+          echo "  - DB_TYPE=file (JSON storage)"
+          echo "  - PORT=8080"
+
+  integration-tests:
+    needs: deploy-to-cloudrun
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Get Cloud Run service URL
+        id: service-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Service URL: $SERVICE_URL"
+
+      - name: Wait for service to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s ${{ steps.service-url.outputs.url }}/api/health > /dev/null 2>&1; then
+              echo "✅ Service is ready"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/30)"
+            sleep 2
+          done
+          echo "❌ Service did not become ready in time"
+          exit 1
+
+      - name: Health check
+        run: |
+          echo "Testing health endpoint..."
+          curl -v ${{ steps.service-url.outputs.url }}/api/health
+
+      - name: API smoke test - GET /api/tasks
+        run: |
+          echo "Testing GET /api/tasks endpoint..."
+          curl -v ${{ steps.service-url.outputs.url }}/api/tasks
+
+      - name: Deployment success notification
+        run: |
+          echo "✅ Cloud Run deployment and tests successful!"
+          echo ""
+          echo "Service Details:"
+          echo "  URL: ${{ steps.service-url.outputs.url }}"
+          echo "  Service: ${{ env.CLOUD_RUN_SERVICE }}"
+          echo "  Region: ${{ env.GCP_REGION }}"
+          echo "  Image: us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/learning-tracker/app:latest"
